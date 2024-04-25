@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Consentimento</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-100 h-screen flex justify-center items-center">
+    <div class="bg-white p-8 rounded shadow-md max-w-md w-full">
+        <div class="mb-6">
+            <h3 class="text-lg font-semibold mb-2">Conceder acesso aos escopos a seguir ?</h3>
+            <ul id="scopesList" class="list-disc pl-4">
+            </ul>
+        </div>
+
+        <form id="consentForm" action="http://localhost:8080/consent" method="POST">
+            <input type="hidden" id="state" name="state">
+
+            <div class="flex justify-between items-center">
+                <button type="submit"
+                    class="w-1/2 bg-blue-500 text-white rounded py-2 px-4 hover:bg-blue-600 focus:outline-none focus:bg-blue-600">Permitir</button>
+                <div class="w-8"></div>
+                <button id="denyButton" type="button"
+                    class="w-1/2 bg-red-500 text-white rounded py-2 px-4 hover:bg-red-600 focus:outline-none focus:bg-red-600">Negar</button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        const oAuthClientConfig = {
+            auth_server: "http://localhost:8080/",
+            client_id: "dxFPB5dj1bX6WQKDo_lF0KIM",
+            redirect_uri: "http://localhost:8080/private/dashboard.html"
+        }
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            document.getElementById('denyButton').addEventListener('click', function () {
+                window.location.href = "/auth";
+            });
+
+            const urlParams = new URLSearchParams(window.location.search);
+            const scope = urlParams.get('scope');
+            const scopesList = document.getElementById('scopesList');
+            const scopeArray = scope.split(' ');
+            scopeArray.forEach(function (item) {
+                const li = document.createElement('li');
+                li.textContent = item;
+                scopesList.appendChild(li);
+            });
+            var state = localStorage.getItem("state");
+            document.getElementById("state").value = state;
+        });
+
+        document.getElementById('consentForm').addEventListener('submit', function (event) {
+            event.preventDefault();
+            const urlParams = new URLSearchParams(window.location.search);
+            
+            // Construindo o objeto de dados
+            const requestData = {
+                state: document.getElementById('state').value,
+                redirect_uri: oAuthClientConfig.redirect_uri,
+                client_id: oAuthClientConfig.client_id,
+                code: urlParams.get('code'),
+                code_verifier: localStorage.getItem("codeVerifier"),
+                grant_type: "authorization_code"
+            };
+
+            fetch(oAuthClientConfig.auth_server + 'oauth2/v1/token', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)})
+                .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao fazer a solicitação: ' + response.status);
+                }
+                return response.text();
+            })
+            .then(data => {
+                localStorage.setItem("token", data)
+                window.location.href = "http://localhost:8080/private/dashboard.html"
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+            });
+        });
+    </script>
+</body>
+
+</html>

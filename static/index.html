@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+</head>
+
+<body class="bg-gray-100 h-screen flex justify-center items-center">
+    <div class="bg-white p-8 rounded shadow-md max-w-md w-full">
+        <h2 class="text-2xl font-semibold mb-4">Login</h2>
+        <form>
+            <button type="submit"
+                class="bg-blue-500 text-white rounded py-2 px-4 hover:bg-blue-600 focus:outline-none focus:bg-blue-600">Auth</button>
+        </form>
+    </div>
+</body>
+
+<script>
+    const oAuthClient = {
+        auth_server: "http://localhost:8080/oauth2/login",
+        client_id: "dxFPB5dj1bX6WQKDo_lF0KIM",
+        redirect_uri: "http://localhost:8080/auth/auth.html",
+        scope: "openid+offline_access+wallet.transfer",
+    }
+
+    async function generateCodeChallenge(codeVerifier) {
+        // Convertendo o code_verifier para ArrayBuffer
+        const codeVerifierBuffer = new TextEncoder().encode(codeVerifier);
+        // Calculando o SHA-256 hash do code_verifier
+        const hashBuffer = await crypto.subtle.digest('SHA-256', codeVerifierBuffer);
+        // Convertendo o hash para base64
+        const codeChallenge = this.base64urlencode(hashBuffer);
+        return codeChallenge;
+    }
+
+    function base64urlencode(str) {
+        return btoa(str)
+            .replace(/\+/g, '-')
+            .replace(/\//g, '_')
+            .replace(/=+$/, '');
+    }
+
+
+
+    // Função para o code verifier
+    function generateCodeVerifier() {
+        const allowedChars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-._~';
+        const length = Math.floor(Math.random() * (128 - 43 + 1)) + 43;
+        let codeVerifier = '';
+        for (let i = 0; i < length; i++) {
+            const randomIndex = Math.floor(Math.random() * allowedChars.length);
+            codeVerifier += allowedChars[randomIndex];
+        }
+
+        return codeVerifier;
+    }
+
+    // Função para gerar um valor aleatório para o parâmetro state
+    function generateState() {
+        const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+        const length = 10;
+        let state = '';
+        for (let i = 0; i < length; i++) {
+            state += characters.charAt(Math.floor(Math.random() * characters.length));
+        }
+        return state;
+    }
+
+
+    async function auth() {
+        const state = generateState();
+        const codeVerifier = generateCodeVerifier()
+        const codeChallenge = await this.generateCodeChallenge(codeVerifier)
+        localStorage.setItem("state", state)
+        localStorage.setItem("codeVerifier", codeVerifier)
+        const url = `${oAuthClient.auth_server}?response_type=code&client_id=${oAuthClient.client_id}&redirect_uri=${oAuthClient.redirect_uri}&scope=${oAuthClient.scope}&state=${state}&code_verifier=${codeVerifier}&code_challenge=${codeChallenge}&code_challenge_method=S256`;
+        fetch(url)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Erro ao fazer a solicitação: ' + response.status);
+                }
+                window.location.href = response.url
+                return response.text();
+            })
+            .then(data => {
+                console.log('Resposta da solicitação:', data);
+            })
+            .catch(error => {
+                console.error('Erro:', error);
+            });
+
+    }
+
+    //Inicia o fluxo 
+    auth()
+</script>
+
+</html>
